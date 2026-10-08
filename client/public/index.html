@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrossPlay Arena - 3D Arcade Racer & Mobile Controller Platform</title>
+  <!-- Google Fonts for futuristic arcade & sleek HUD typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Outfit:wght@400;600;700;800&family=Rajdhani:wght@600;700;900&display=swap" rel="stylesheet">
+
+  <!-- Three.js Library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & CSS RESET
+       ========================================================================== */
+    :root {
+      --bg-dark: #070712;
+      --bg-card: rgba(18, 20, 38, 0.8);
+      --bg-card-border: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #00f0ff;
+      --accent-magenta: #ff0077;
+      --accent-lime: #00ff66;
+      --accent-gold: #ffb700;
+      --accent-purple: #8b5cf6;
+      
+      --color-p1: #00f0ff;
+      --color-p2: #ff0077;
+      --color-p3: #00ff66;
+      --color-p4: #ffb700;
+
+      --font-body: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Orbitron', monospace, sans-serif;
+      --font-hud: 'Rajdhani', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: #ffffff;
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+
+    /* Top Global Header */
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 28px;
+      background: rgba(10, 12, 24, 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--bg-card-border);
+      z-index: 10;
+      height: 60px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+      font-size: 18px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(to right, #ffffff, #c7d2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .audio-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 255, 102, 0.08);
+      border: 1px solid rgba(0, 255, 102, 0.25);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-lime);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-lime);
+      box-shadow: 0 0 8px var(--accent-lime);
+    }
+
+    /* Screen Views */
+    .view-screen {
+      flex: 1;
+      display: none;
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 60px);
+    }
+
+    .view-screen.active {
+      display: flex;
+    }
+
+    /* ==========================================================================
+       VIEW 1: LOBBY
+       ========================================================================== */
+    #view-lobby {
+      flex-direction: column;
+      padding: 24px 40px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .lobby-hero {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+
+    .room-code-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .room-code-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 6px; height: 100%;
+      background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-magenta));
+    }
+
+    .room-code-display {
+      font-family: var(--font-display);
+      font-size: 54px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: #ffffff;
+      text-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    #qr-canvas {
+      width: 110px;
+      height: 110px;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 5px;
+    }
+
+    .mode-select-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .mode-options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      height: 100%;
+    }
+
+    .mode-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.25s;
+      color: #fff;
+    }
+
+    .mode-btn.selected {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.12);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+    }
+
+    .mode-btn.selected.mode-puzzle {
+      border-color: var(--accent-magenta);
+      background: rgba(255, 0, 119, 0.12);
+      box-shadow: 0 0 25px rgba(255, 0, 119, 0.3);
+    }
+
+    .player-slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .player-slot-card {
+      background: var(--bg-card);
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 18px 14px;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .player-slot-card.occupied {
+      border: 2px solid var(--slot-color);
+      background: linear-gradient(160deg, rgba(18, 20, 38, 0.95), rgba(10, 12, 24, 0.95));
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .start-game-btn {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      padding: 16px 38px;
+      border-radius: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0, 240, 255, 0.3);
+      transition: all 0.3s;
+    }
+
+    .start-game-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      filter: grayscale(1);
+    }
+
+    /* ==========================================================================
+       VIEW 2: THREE.JS 3D ARCADE RACING VIEWPORT & HUD OVERLAYS
+       ========================================================================== */
+    #view-racing {
+      position: relative;
+      background: #000;
+      overflow: hidden;
+    }
+
+    #threejs-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 1;
+    }
+
+    /* NFS HUD Overlay Elements */
+    .nfs-hud-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+    }
+
+    .hud-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .hud-timer-card {
+      background: rgba(10, 12, 24, 0.85);
+      backdrop-filter: blur(12px);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 10px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hud-timer-digits {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+    }
+
+    .hud-standings-card {
+      background: rgba(10, 12, 24, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 10px 16px;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hud-standings-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Speedometer & Tachometer Cluster (Bottom Right) */
+    .nfs-cluster {
+      position: absolute;
+      bottom: 28px;
+      right: 28px;
+      width: 220px;
+      height: 120px;
+      background: rgba(10, 12, 24, 0.88);
+      backdrop-filter: blur(14px);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+
+    .cluster-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .speed-digits {
+      font-family: var(--font-hud);
+      font-size: 52px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 0.9;
+      text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    }
+
+    .speed-unit {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .gear-badge {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent-cyan);
+    }
+
+    .rpm-gauge-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .rpm-gauge-fill {
+      width: 20%;
+      height: 100%;
+      background: linear-gradient(to right, var(--accent-lime), var(--accent-cyan), #ff0055);
+      transition: width 0.08s ease-out;
+    }
+
+    .nitro-gauge-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .nitro-gauge-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      transition: width 0.1s linear;
+    }
+
+    /* Motion Blur / Speed Lines Canvas */
+    #speed-lines-canvas {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ==========================================================================
+       VIEW 3: PUZZLE VIEW
+       ========================================================================== */
+    #view-puzzle {
+      flex-direction: column;
+      padding: 24px 40px;
+      gap: 20px;
+    }
+
+    .puzzle-arena-card {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .puzzle-question-text {
+      font-family: var(--font-display);
+      font-size: 72px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 0 35px rgba(255, 0, 119, 0.6);
+    }
+
+    .puzzle-options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .puzzle-option-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 24px;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .puzzle-option-card.correct-highlight {
+      background: rgba(0, 255, 102, 0.25) !important;
+      border-color: var(--accent-lime) !important;
+      box-shadow: 0 0 30px rgba(0, 255, 102, 0.5);
+    }
+
+    /* ==========================================================================
+       VIEW 4: GAME OVER & PODIUM
+       ========================================================================== */
+    #view-gameover {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      gap: 24px;
+      position: relative;
+    }
+
+    #confetti-canvas {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .podium-stage {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      height: 220px;
+    }
+
+    .podium-column {
+      flex: 1;
+      max-width: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-radius: 16px 16px 0 0;
+      padding: 14px 10px;
+    }
+
+    .podium-col-1 {
+      height: 190px;
+      background: linear-gradient(to top, rgba(255, 183, 0, 0.4), rgba(255, 183, 0, 0.15));
+      border: 2px solid var(--accent-gold);
+      order: 2;
+    }
+    .podium-col-2 {
+      height: 140px;
+      background: linear-gradient(to top, rgba(200, 200, 220, 0.3), rgba(200, 200, 220, 0.1));
+      border: 2px solid #cbd5e1;
+      order: 1;
+    }
+    .podium-col-3 {
+      height: 100px;
+      background: linear-gradient(to top, rgba(205, 127, 50, 0.3), rgba(205, 127, 50, 0.1));
+      border: 2px solid #cd7f32;
+      order: 3;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="brand">
+        <div class="brand-logo">🏎️</div>
+        <div>
+          <h1 class="brand-title">CROSSPLAY 3D ARENA</h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="audio-toggle-btn" class="audio-btn">
+          <span id="audio-icon">🔊</span> AUDIO
+        </button>
+        <div class="connection-status">
+          <span class="status-dot"></span>
+          <span id="connection-status-text">HOST READY</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 1. Lobby View -->
+    <main id="view-lobby" class="view-screen active">
+      <section class="lobby-hero">
+        <div class="room-code-card">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.6);">
+              JOIN ON MOBILE PHONE • ENTER ROOM CODE
+            </div>
+            <div class="room-code-display">
+              <span id="lobby-room-code">------</span>
+            </div>
+            <p style="font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 6px;">
+              Open on your phone: <strong id="lobby-controller-url" style="color: var(--accent-cyan);">http://localhost:3000/controller</strong>
+            </p>
+          </div>
+
+          <div class="qr-container">
+            <canvas id="qr-canvas"></canvas>
+            <span style="font-size: 10px; text-transform: uppercase; opacity: 0.6;">Scan to Play</span>
+          </div>
+        </div>
+
+        <div class="mode-select-card">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.6);">
+            SELECT GAME MODE
+          </div>
+          <div class="mode-options-grid">
+            <button id="mode-racing-btn" class="mode-btn selected">
+              <span style="font-size: 26px;">🏎️</span>
+              <span style="font-family: var(--font-display); font-size: 12px; font-weight: 700;">3D ARCADE RACER</span>
+            </button>
+            <button id="mode-puzzle-btn" class="mode-btn mode-puzzle">
+              <span style="font-size: 26px;">🧠</span>
+              <span style="font-family: var(--font-display); font-size: 12px; font-weight: 700;">MATH PUZZLE</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Player Slots -->
+      <section style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-family: var(--font-display); font-size: 14px; font-weight: 700;">
+            RACERS READY (<span id="player-count-badge">0 / 4</span>)
+          </span>
+          <button id="solo-test-btn" style="background: transparent; border: 1px dashed rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+            Solo Test Mode: OFF
+          </button>
+        </div>
+
+        <div class="player-slots-grid">
+          <div id="slot-card-0" class="player-slot-card" style="--slot-color: var(--color-p1);">
+            <div style="font-size: 32px;">🏎️</div>
+            <div class="slot-player-name" style="font-weight: 700;">Waiting...</div>
+          </div>
+          <div id="slot-card-1" class="player-slot-card" style="--slot-color: var(--color-p2);">
+            <div style="font-size: 32px;">🏎️</div>
+            <div class="slot-player-name" style="font-weight: 700;">Waiting...</div>
+          </div>
+          <div id="slot-card-2" class="player-slot-card" style="--slot-color: var(--color-p3);">
+            <div style="font-size: 32px;">🏎️</div>
+            <div class="slot-player-name" style="font-weight: 700;">Waiting...</div>
+          </div>
+          <div id="slot-card-3" class="player-slot-card" style="--slot-color: var(--color-p4);">
+            <div style="font-size: 32px;">🏎️</div>
+            <div class="slot-player-name" style="font-weight: 700;">Waiting...</div>
+          </div>
+        </div>
+      </section>
+
+      <footer style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+        <span style="font-size: 12px; color: rgba(255,255,255,0.5);">Need for Speed style 3D arcade racing with smooth camera follow & mobile controls</span>
+        <button id="start-game-btn" class="start-game-btn" disabled>
+          <span>START 3D RACE</span>
+          <span>▶</span>
+        </button>
+      </footer>
+    </main>
+
+    <!-- 2. Three.js 3D Arcade Racing View -->
+    <main id="view-racing" class="view-screen">
+      <!-- 3D Three.js WebGL Canvas Container -->
+      <div id="threejs-container"></div>
+      <canvas id="speed-lines-canvas"></canvas>
+
+      <!-- NFS Style HUD Overlay -->
+      <div class="nfs-hud-overlay">
+        <div class="hud-header-bar">
+          <div class="hud-timer-card">
+            <span style="font-size: 9px; letter-spacing: 1.5px; opacity: 0.6;">RACE TIME</span>
+            <span id="racing-timer-display" class="hud-timer-digits">60</span>
+          </div>
+
+          <div class="hud-standings-card">
+            <div style="font-size: 10px; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-bottom: 2px;">
+              LEADERBOARD
+            </div>
+            <div id="racing-hud-standings"></div>
+          </div>
+        </div>
+
+        <!-- NFS Cockpit Speedometer & Tachometer Cluster -->
+        <div class="nfs-cluster">
+          <div class="cluster-top">
+            <div>
+              <span id="hud-speed-val" class="speed-digits">0</span>
+              <span class="speed-unit">KM/H</span>
+            </div>
+            <div id="hud-gear-val" class="gear-badge">G1</div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; opacity: 0.6; font-family: var(--font-display);">
+              <span>RPM</span>
+              <span id="hud-rpm-val">1200</span>
+            </div>
+            <div class="rpm-gauge-bar">
+              <div id="hud-rpm-fill" class="rpm-gauge-fill"></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--accent-cyan); font-family: var(--font-display); font-weight: 700;">
+              <span>NITRO BOOST</span>
+              <span id="hud-nitro-val">100%</span>
+            </div>
+            <div class="nitro-gauge-bar">
+              <div id="hud-nitro-fill" class="nitro-gauge-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 3. Puzzle View -->
+    <main id="view-puzzle" class="view-screen">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="puzzle-round-number" style="font-family: var(--font-display); font-size: 18px; color: var(--accent-magenta);">ROUND 1</span>
+        <span id="puzzle-timer-display" style="font-family: var(--font-display); font-size: 26px;">02:00</span>
+      </div>
+
+      <div class="puzzle-arena-card">
+        <div id="puzzle-question-display" class="puzzle-question-text">-- + --</div>
+        <div class="puzzle-options-grid">
+          <div id="puzzle-opt-A" class="puzzle-option-card">
+            <span style="font-family: var(--font-display); color: var(--accent-gold);">A</span>
+            <span id="puzzle-val-A">--</span>
+          </div>
+          <div id="puzzle-opt-B" class="puzzle-option-card">
+            <span style="font-family: var(--font-display); color: var(--accent-cyan);">B</span>
+            <span id="puzzle-val-B">--</span>
+          </div>
+          <div id="puzzle-opt-C" class="puzzle-option-card">
+            <span style="font-family: var(--font-display); color: var(--accent-magenta);">C</span>
+            <span id="puzzle-val-C">--</span>
+          </div>
+          <div id="puzzle-opt-D" class="puzzle-option-card">
+            <span style="font-family: var(--font-display); color: var(--accent-lime);">D</span>
+            <span id="puzzle-val-D">--</span>
+          </div>
+        </div>
+      </div>
+      <div id="puzzle-scores-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;"></div>
+    </main>
+
+    <!-- 4. Game Over View -->
+    <main id="view-gameover" class="view-screen">
+      <canvas id="confetti-canvas"></canvas>
+      <div style="background: var(--bg-card); border-radius: 24px; padding: 36px 50px; display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 800px; width: 100%;">
+        <h2 id="gameover-title" style="font-family: var(--font-display); font-size: 36px; font-weight: 900; background: linear-gradient(to right, var(--accent-gold), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+          RACE FINISHED!
+        </h2>
+        <div class="podium-stage">
+          <div id="podium-2" class="podium-column podium-col-2">
+            <div style="font-size: 28px;">🥈</div>
+            <div id="podium-name-2" style="font-weight: 700;">--</div>
+            <div id="podium-score-2" style="font-family: var(--font-display); font-size: 16px;">-- PTS</div>
+          </div>
+          <div id="podium-1" class="podium-column podium-col-1">
+            <div style="font-size: 32px;">👑</div>
+            <div id="podium-name-1" style="font-weight: 800;">--</div>
+            <div id="podium-score-1" style="font-family: var(--font-display); font-size: 18px;">-- PTS</div>
+          </div>
+          <div id="podium-3" class="podium-column podium-col-3">
+            <div style="font-size: 26px;">🥉</div>
+            <div id="podium-name-3" style="font-weight: 700;">--</div>
+            <div id="podium-score-3" style="font-family: var(--font-display); font-size: 15px;">-- PTS</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px;">
+          <button id="gameover-rematch-btn" class="start-game-btn" style="padding: 12px 28px; font-size: 14px;">PLAY AGAIN 🔄</button>
+          <button id="gameover-lobby-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 12px 24px; border-radius: 12px; font-family: var(--font-display); cursor: pointer;">RETURN TO LOBBY</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    // Initialize Socket.IO connection immediately
+    const socket = io();
+
+    /* ==========================================================================
+       SYNTHESIZED WEB AUDIO (Engine Roar, Nitro, Victory)
+       ========================================================================== */
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.engineOsc = null;
+        this.engineGain = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      startEngine() {
+        if (this.muted || this.engineOsc) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          this.engineOsc = this.ctx.createOscillator();
+          this.engineGain = this.ctx.createGain();
+          this.engineOsc.type = 'sawtooth';
+          this.engineOsc.frequency.setValueAtTime(60, this.ctx.currentTime);
+          this.engineGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          this.engineOsc.connect(this.engineGain);
+          this.engineGain.connect(this.ctx.destination);
+          this.engineOsc.start();
+        } catch (e) {}
+      }
+      updateEngine(rpm, isBoosting) {
+        if (!this.engineOsc || this.muted) return;
+        const freq = 45 + ((rpm || 1000) / 8500) * 160;
+        this.engineOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+        this.engineGain.gain.setTargetAtTime(isBoosting ? 0.14 : 0.07, this.ctx.currentTime, 0.05);
+      }
+      stopEngine() {
+        if (this.engineOsc) {
+          try { this.engineOsc.stop(); } catch(e){}
+          this.engineOsc = null;
+        }
+      }
+      playVictory() {
+        if (this.muted) return;
+        this.init();
+        [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
+          setTimeout(() => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.frequency.setValueAtTime(f, this.ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.25);
+          }, idx * 140);
+        });
+      }
+    }
+    const audio = new AudioEngine();
+
+    /* ==========================================================================
+       QR CODE GENERATOR
+       ========================================================================== */
+    function renderQRCode(canvas, text) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width = canvas.height = 110;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      const grid = 21;
+      const cellSize = Math.floor((size - 10) / grid);
+      const offset = Math.floor((size - (grid * cellSize)) / 2);
+      const matrix = Array(grid).fill(0).map(() => Array(grid).fill(0));
+
+      function drawFinder(r, c) {
+        for (let i = 0; i < 7; i++) {
+          for (let j = 0; j < 7; j++) {
+            if (i === 0 || i === 6 || j === 0 || j === 6 || (i >= 2 && i <= 4 && j >= 2 && j <= 4)) matrix[r + i][c + j] = 1;
+          }
+        }
+      }
+      drawFinder(0, 0); drawFinder(0, grid - 7); drawFinder(grid - 7, 0);
+
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) hash = (hash << 5) - hash + text.charCodeAt(i);
+      for (let r = 0; r < grid; r++) {
+        for (let c = 0; c < grid; c++) {
+          if ((r < 8 && c < 8) || (r < 8 && c >= grid - 8) || (r >= grid - 8 && c < 8)) continue;
+          if (r === 6 || c === 6) { matrix[r][c] = (r + c) % 2 === 0 ? 1 : 0; continue; }
+          matrix[r][c] = Math.abs(Math.sin((r * grid + c) * 31 + hash)) > 0.48 ? 1 : 0;
+        }
+      }
+      ctx.fillStyle = '#0a0c18';
+      for (let r = 0; r < grid; r++) {
+        for (let c = 0; c < grid; c++) {
+          if (matrix[r][c]) ctx.fillRect(offset + c * cellSize, offset + r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    /* ==========================================================================
+       CONFETTI CANNON
+       ========================================================================== */
+    class Confetti {
+      constructor(id) {
+        this.c = document.getElementById(id);
+        this.ctx = this.c.getContext('2d');
+        this.p = [];
+        this.active = false;
+        window.addEventListener('resize', () => { this.c.width = window.innerWidth; this.c.height = window.innerHeight; });
+        this.c.width = window.innerWidth; this.c.height = window.innerHeight;
+      }
+      burst() {
+        this.p = []; this.active = true;
+        const colors = ['#00f0ff', '#ff0077', '#00ff66', '#ffb700', '#ffffff'];
+        for (let i = 0; i < 140; i++) {
+          this.p.push({
+            x: this.c.width / 2 + (Math.random() * 200 - 100),
+            y: this.c.height / 2,
+            vx: (Math.random() - 0.5) * 16,
+            vy: (Math.random() - 0.8) * 18,
+            s: Math.random() * 8 + 4,
+            col: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * 360,
+            op: 1
+          });
+        }
+        this.loop();
+      }
+      loop() {
+        if (!this.active) return;
+        this.ctx.clearRect(0, 0, this.c.width, this.c.height);
+        this.p.forEach(pt => {
+          pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.35; pt.rot += 4; pt.op -= 0.006;
+          this.ctx.save();
+          this.ctx.translate(pt.x, pt.y);
+          this.ctx.rotate(pt.rot * Math.PI / 180);
+          this.ctx.fillStyle = pt.col;
+          this.ctx.globalAlpha = Math.max(0, pt.op);
+          this.ctx.fillRect(-pt.s/2, -pt.s/2, pt.s, pt.s * 1.5);
+          this.ctx.restore();
+        });
+        this.p = this.p.filter(pt => pt.op > 0);
+        if (this.p.length > 0) requestAnimationFrame(() => this.loop());
+        else this.active = false;
+      }
+    }
+    const confetti = new Confetti('confetti-canvas');
+
+    /* ==========================================================================
+       THREE.JS 3D ARCADE RACER ENGINE
+       ========================================================================== */
+    let scene, camera, renderer;
+    let trackRoad, trackLines = [], sceneryObjects = [];
+    let carMeshes = new Map(); // socketId -> THREE.Group
+    let speedLinesCanvas, slCtx;
+    let cameraShake = 0;
+    let baseFOV = 60;
+    let is3DRunning = false;
+
+    const ROAD_WIDTH = 32;
+    const ROAD_LENGTH = 1200;
+    const SCENERY_COUNT = 60;
+
+    // 1. Scene Initialization
+    function initScene() {
+      const container = document.getElementById('threejs-container');
+      container.innerHTML = '';
+
+      // Scene with Cyberpunk Fog
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060814);
+      scene.fog = new THREE.FogExp2(0x060814, 0.0035);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(baseFOV, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 7, -14);
+      camera.lookAt(0, 2, 10);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0x00f0ff, 0.8);
+      dirLight.position.set(20, 40, -30);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      const stadiumLight = new THREE.DirectionalLight(0xff0077, 0.45);
+      stadiumLight.position.set(-20, 30, 40);
+      scene.add(stadiumLight);
+
+      // Build Infinite 3D Road Track
+      buildTrack();
+
+      // Build Scenery (Neon Buildings & Palms)
+      buildScenery();
+
+      // Motion Blur / Speed Lines Canvas setup
+      speedLinesCanvas = document.getElementById('speed-lines-canvas');
+      slCtx = speedLinesCanvas.getContext('2d');
+      speedLinesCanvas.width = container.clientWidth;
+      speedLinesCanvas.height = container.clientHeight;
+
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('threejs-container');
+      if (!container || !renderer || !camera) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      if (speedLinesCanvas) {
+        speedLinesCanvas.width = container.clientWidth;
+        speedLinesCanvas.height = container.clientHeight;
+      }
+    }
+
+    // 2. Track & Infinite Scroll Geometry
+    function buildTrack() {
+      // Main Asphalt Road
+      const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_LENGTH, 1, 60);
+      const roadMat = new THREE.MeshStandardMaterial({
+        color: 0x11131c,
+        roughness: 0.8,
+        metalness: 0.2
+      });
+      trackRoad = new THREE.Mesh(roadGeo, roadMat);
+      trackRoad.rotation.x = -Math.PI / 2;
+      trackRoad.receiveShadow = true;
+      scene.add(trackRoad);
+
+      // White Lane Dividers
+      const lineGeo = new THREE.BoxGeometry(0.35, 0.05, 6);
+      const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+      for (let z = -ROAD_LENGTH / 2; z < ROAD_LENGTH / 2; z += 18) {
+        // Left divider
+        const l1 = new THREE.Mesh(lineGeo, lineMat);
+        l1.position.set(-ROAD_WIDTH * 0.25, 0.06, z);
+        scene.add(l1);
+        trackLines.push(l1);
+
+        // Center divider
+        const l2 = new THREE.Mesh(lineGeo, lineMat);
+        l2.position.set(0, 0.06, z);
+        scene.add(l2);
+        trackLines.push(l2);
+
+        // Right divider
+        const l3 = new THREE.Mesh(lineGeo, lineMat);
+        l3.position.set(ROAD_WIDTH * 0.25, 0.06, z);
+        scene.add(l3);
+        trackLines.push(l3);
+      }
+
+      // Red/White Striped Kerbs (Curbs)
+      const curbGeo = new THREE.BoxGeometry(1.2, 0.3, ROAD_LENGTH);
+      const curbMat = new THREE.MeshStandardMaterial({ color: 0xff0055, roughness: 0.6 });
+      const curbLeft = new THREE.Mesh(curbGeo, curbMat);
+      curbLeft.position.set(-ROAD_WIDTH / 2 - 0.6, 0.15, 0);
+      scene.add(curbLeft);
+
+      const curbRight = new THREE.Mesh(curbGeo, curbMat);
+      curbRight.position.set(ROAD_WIDTH / 2 + 0.6, 0.15, 0);
+      scene.add(curbRight);
+    }
+
+    // 3. Scenery Generation (Low-poly neon towers & low-poly trees)
+    function buildScenery() {
+      sceneryObjects = [];
+      const buildingGeo = new THREE.BoxGeometry(10, 30, 12);
+      const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 4, 6);
+      const foliageGeo = new THREE.ConeGeometry(3.2, 7, 6);
+
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.9 });
+      const foliageMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.6, flatShading: true });
+      const foliageAltMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.5, flatShading: true });
+
+      for (let i = 0; i < SCENERY_COUNT; i++) {
+        const isLeft = Math.random() > 0.5;
+        const sideX = isLeft ? (-ROAD_WIDTH / 2 - 12 - Math.random() * 22) : (ROAD_WIDTH / 2 + 12 + Math.random() * 22);
+        const zPos = (Math.random() - 0.5) * ROAD_LENGTH;
+
+        if (i % 2 === 0) {
+          // Low-poly Cyberpunk Tower / Building (BoxGeometry)
+          const height = 18 + Math.random() * 38;
+          const bMat = new THREE.MeshStandardMaterial({
+            color: Math.random() > 0.5 ? 0x090c1a : 0x120822,
+            roughness: 0.4,
+            metalness: 0.6
+          });
+          const building = new THREE.Mesh(buildingGeo, bMat);
+          building.scale.set(1, height / 30, 1);
+          building.position.set(sideX, height / 2, zPos);
+          building.castShadow = true;
+          scene.add(building);
+
+          // Neon Strip Window
+          const neonStrip = new THREE.Mesh(
+            new THREE.BoxGeometry(10.2, 1.2, 12.2),
+            new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x00f0ff : 0xff0077 })
+          );
+          neonStrip.position.set(0, 14, 0);
+          building.add(neonStrip);
+          sceneryObjects.push(building);
+        } else {
+          // Low-poly Tree (ConeGeometry foliage + CylinderGeometry trunk)
+          const treeGroup = new THREE.Group();
+          const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+          trunk.position.y = 2;
+          trunk.castShadow = true;
+          treeGroup.add(trunk);
+
+          const f1 = new THREE.Mesh(foliageGeo, foliageMat);
+          f1.position.y = 6;
+          f1.castShadow = true;
+          treeGroup.add(f1);
+
+          const f2 = new THREE.Mesh(foliageGeo, foliageAltMat);
+          f2.position.y = 9.2;
+          f2.scale.set(0.72, 0.72, 0.72);
+          f2.castShadow = true;
+          treeGroup.add(f2);
+
+          treeGroup.position.set(sideX, 0, zPos);
+          const s = 0.85 + Math.random() * 0.45;
+          treeGroup.scale.set(s, s, s);
+          scene.add(treeGroup);
+          sceneryObjects.push(treeGroup);
+        }
+      }
+    }
+
+    // 4. Procedural Supercar Generator (THREE.Group)
+    function createCar(colorHex = 0x00f0ff, name = 'Racer') {
+      const carGroup = new THREE.Group();
+
+      // Main Aerodynamic Chassis
+      const bodyGeo = new THREE.BoxGeometry(2.4, 0.7, 5.0);
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.65;
+      body.castShadow = true;
+      carGroup.add(body);
+
+      // Cabin / Cockpit Roof
+      const cabinGeo = new THREE.BoxGeometry(1.8, 0.6, 2.4);
+      const cabinMat = new THREE.MeshStandardMaterial({
+        color: 0x090b14,
+        metalness: 0.9,
+        roughness: 0.1
+      });
+      const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+      cabin.position.set(0, 1.25, -0.2);
+      cabin.castShadow = true;
+      carGroup.add(cabin);
+
+      // Carbon Fiber Rear Wing / Spoiler
+      const wingGeo = new THREE.BoxGeometry(2.6, 0.1, 0.6);
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0x05070a, metalness: 0.9 });
+      const wing = new THREE.Mesh(wingGeo, wingMat);
+      wing.position.set(0, 1.45, -2.2);
+      carGroup.add(wing);
+
+      // 4 High-Performance Wheels
+      const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.42, 16);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x11131a, roughness: 0.9 });
+
+      const wheelPositions = [
+        [-1.25, 0.48, 1.5],  // Front Left
+        [1.25, 0.48, 1.5],   // Front Right
+        [-1.25, 0.48, -1.5], // Rear Left
+        [1.25, 0.48, -1.5]   // Rear Right
+      ];
+
+      carGroup.wheels = [];
+      wheelPositions.forEach(pos => {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.position.set(...pos);
+        wheel.castShadow = true;
+        carGroup.add(wheel);
+        carGroup.wheels.push(wheel);
+      });
+
+      // Front Headlights & SpotLights
+      const headLightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const hlLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), headLightMat);
+      hlLeft.position.set(-0.8, 0.75, 2.5);
+      carGroup.add(hlLeft);
+
+      const hlRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), headLightMat);
+      hlRight.position.set(0.8, 0.75, 2.5);
+      carGroup.add(hlRight);
+
+      // Dual SpotLight beams illuminating the asphalt
+      const spotLight = new THREE.SpotLight(0xffffff, 1.2, 45, Math.PI / 6, 0.4);
+      spotLight.position.set(0, 0.8, 2.6);
+      spotLight.target.position.set(0, 0, 18);
+      carGroup.add(spotLight);
+      carGroup.add(spotLight.target);
+
+      // Glowing LED Taillights (Flare RED when braking)
+      const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.18, 0.1), tailLightMat);
+      tl.position.set(0, 0.85, -2.52);
+      carGroup.add(tl);
+      carGroup.tailLight = tl;
+
+      // Exhaust Pipes Flame Mesh
+      const flameGeo = new THREE.ConeGeometry(0.2, 0.8, 8);
+      flameGeo.rotateX(-Math.PI / 2);
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+      const flameL = new THREE.Mesh(flameGeo, flameMat);
+      flameL.position.set(-0.6, 0.45, -2.9);
+      flameL.visible = false;
+      carGroup.add(flameL);
+
+      const flameR = new THREE.Mesh(flameGeo, flameMat);
+      flameR.position.set(0.6, 0.45, -2.9);
+      flameR.visible = false;
+      carGroup.add(flameR);
+
+      carGroup.flames = [flameL, flameR];
+
+      scene.add(carGroup);
+      return carGroup;
+    }
+
+    // 5. Physics & Dynamic Camera Update Loop
+    function updatePhysics() {
+      // Find lead player or player 1 for chase camera
+      const leadPlayer = (currentRoom?.players || [])[0];
+      if (!leadPlayer) return;
+
+      const myCarMesh = carMeshes.get(leadPlayer.id);
+      if (!myCarMesh) return;
+
+      // Smooth Chase Camera following the car
+      const targetCamPos = new THREE.Vector3(
+        myCarMesh.position.x * 0.75,
+        myCarMesh.position.y + 4.8,
+        myCarMesh.position.z - 11.5
+      );
+
+      // Camera Shake when boosting or top speed
+      if (leadPlayer.racing?.isBoosting) {
+        cameraShake = Math.sin(Date.now() * 0.05) * 0.18;
+      } else {
+        cameraShake = 0;
+      }
+
+      camera.position.lerp(targetCamPos, 0.14);
+      camera.position.x += cameraShake;
+      camera.position.y += cameraShake;
+
+      // Look slightly ahead of car
+      const lookTarget = new THREE.Vector3(
+        myCarMesh.position.x * 0.4,
+        myCarMesh.position.y + 1.2,
+        myCarMesh.position.z + 16
+      );
+      camera.lookAt(lookTarget);
+
+      // Camera FOV expansion during nitro boost (Need for Speed style)
+      const targetFOV = leadPlayer.racing?.isBoosting ? 76 : baseFOV;
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFOV, 0.08);
+      camera.updateProjectionMatrix();
+
+      // Infinite Scenery & Lane Recycling relative to camera Z
+      const camZ = myCarMesh.position.z;
+
+      trackLines.forEach(line => {
+        if (line.position.z < camZ - 80) {
+          line.position.z += ROAD_LENGTH;
+        } else if (line.position.z > camZ + ROAD_LENGTH - 80) {
+          line.position.z -= ROAD_LENGTH;
+        }
+      });
+
+      sceneryObjects.forEach(b => {
+        if (b.position.z < camZ - 120) {
+          b.position.z += ROAD_LENGTH;
+        } else if (b.position.z > camZ + ROAD_LENGTH - 120) {
+          b.position.z -= ROAD_LENGTH;
+        }
+      });
+
+      trackRoad.position.z = camZ;
+
+      // Render Speed Lines / Motion Blur
+      renderSpeedLines(leadPlayer.racing?.isBoosting, leadPlayer.racing?.speed || 0);
+
+      // Update Audio
+      audio.updateEngine(leadPlayer.racing?.rpm || 1200, leadPlayer.racing?.isBoosting);
+    }
+
+    // Render Speed Lines on Canvas Overlay
+    let speedParticles = [];
+    for (let i = 0; i < 60; i++) {
+      speedParticles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        len: Math.random() * 40 + 20,
+        spd: Math.random() * 25 + 15
+      });
+    }
+
+    function renderSpeedLines(isBoosting, speed) {
+      if (!slCtx) return;
+      slCtx.clearRect(0, 0, speedLinesCanvas.width, speedLinesCanvas.height);
+      if (!isBoosting && speed < 140) return;
+
+      slCtx.strokeStyle = isBoosting ? 'rgba(0, 240, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)';
+      slCtx.lineWidth = isBoosting ? 2.5 : 1.2;
+
+      const cx = speedLinesCanvas.width / 2;
+      const cy = speedLinesCanvas.height / 2;
+
+      speedParticles.forEach(p => {
+        const dx = p.x - cx;
+        const dy = p.y - cy;
+        const angle = Math.atan2(dy, dx);
+
+        slCtx.beginPath();
+        slCtx.moveTo(p.x, p.y);
+        slCtx.lineTo(p.x + Math.cos(angle) * p.len, p.y + Math.sin(angle) * p.len);
+        slCtx.stroke();
+
+        p.x += Math.cos(angle) * p.spd;
+        p.y += Math.sin(angle) * p.spd;
+
+        if (p.x < 0 || p.x > speedLinesCanvas.width || p.y < 0 || p.y > speedLinesCanvas.height) {
+          p.x = cx + (Math.random() - 0.5) * 300;
+          p.y = cy + (Math.random() - 0.5) * 200;
+        }
+      });
+    }
+
+    // 6. Dedicated Render Function
+    function render() {
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    // 7. GameLoop (60 FPS requestAnimationFrame)
+    function gameLoop() {
+      if (!is3DRunning) return;
+      updatePhysics();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Keyboard controls for instant desktop testing (Arrows / WASD / Space)
+    const activeKeys = { up: false, down: false, left: false, right: false, boost: false };
+    window.addEventListener('keydown', (e) => {
+      if (!currentRoom || currentRoom.state !== 'RACING') return;
+      let act = null;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') act = 'up';
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') act = 'down';
+      else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') act = 'left';
+      else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') act = 'right';
+      else if (e.code === 'Space') act = 'boost';
+
+      if (act && !activeKeys[act]) {
+        activeKeys[act] = true;
+        socket.emit('controller-input', {
+          roomCode: currentRoom.code,
+          action: act,
+          data: { active: true }
+        });
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (!currentRoom || currentRoom.state !== 'RACING') return;
+      let act = null;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') act = 'up';
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') act = 'down';
+      else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') act = 'left';
+      else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') act = 'right';
+      else if (e.code === 'Space') act = 'boost';
+
+      if (act && activeKeys[act]) {
+        activeKeys[act] = false;
+        socket.emit('controller-input', {
+          roomCode: currentRoom.code,
+          action: act,
+          data: { active: false }
+        });
+        if (act === 'up' || act === 'down') {
+          socket.emit('controller-input', {
+            roomCode: currentRoom.code,
+            action: 'release',
+            data: { control: 'throttle' }
+          });
+        }
+        if (act === 'left' || act === 'right') {
+          socket.emit('controller-input', {
+            roomCode: currentRoom.code,
+            action: 'release',
+            data: { control: 'steer' }
+          });
+        }
+      }
+    });
+
+    /* ==========================================================================
+       MULTIPLAYER TELEMETRY SYNC (Update 3D Cars & NFS HUD)
+       ========================================================================== */
+    socket.on('racing-state-tick', ({ players }) => {
+      if (!is3DRunning) return;
+
+      players.forEach(pData => {
+        let car = carMeshes.get(pData.id);
+
+        // Procedurally spawn car if not exists
+        if (!car) {
+          const colorHex = parseInt((pData.color || '#00f0ff').replace('#', '0x'), 16);
+          car = createCar(colorHex, pData.name);
+          carMeshes.set(pData.id, car);
+        }
+
+        // Smooth position sync
+        const targetX = (pData.x || 0) * (ROAD_WIDTH * 0.42);
+        const targetZ = (pData.distance || 0) * 1.5; // Scale distance for 3D track
+
+        car.position.x = THREE.MathUtils.lerp(car.position.x, targetX, 0.25);
+        car.position.z = THREE.MathUtils.lerp(car.position.z, targetZ, 0.25);
+
+        // Steering Yaw & Banking Roll
+        const steerVal = typeof pData.steerInput === 'number' ? pData.steerInput : 0;
+        // Turn car nose towards steering direction (Yaw)
+        car.rotation.y = THREE.MathUtils.lerp(car.rotation.y, steerVal * 0.3, 0.25);
+        // Bank body into corner (Roll)
+        car.rotation.z = THREE.MathUtils.lerp(car.rotation.z, -steerVal * 0.16, 0.25);
+
+        // Rotate wheels as car travels & turn front wheels
+        if (car.wheels) {
+          const spinDelta = (pData.speed || 0) * 0.012;
+          car.wheels.forEach((w, idx) => {
+            w.rotation.x += spinDelta;
+            if (idx === 0 || idx === 1) {
+              w.rotation.y = steerVal * 0.35;
+            }
+          });
+        }
+
+        // Nitrous exhaust flames
+        if (car.flames) {
+          car.flames.forEach(f => f.visible = Boolean(pData.isBoosting));
+        }
+
+        // Taillights braking flare
+        if (car.tailLight) {
+          car.tailLight.material.color.setHex(pData.speed > 5 && pData.isBoosting ? 0xff0044 : 0xff0022);
+        }
+      });
+
+      // Update NFS HUD (Primary Player 1)
+      const lead = players[0];
+      if (lead) {
+        document.getElementById('hud-speed-val').textContent = lead.speed || 0;
+        document.getElementById('hud-gear-val').textContent = `G${lead.gear || 1}`;
+        document.getElementById('hud-rpm-val').textContent = `${lead.rpm || 1200} RPM`;
+
+        const rpmPct = Math.min(100, Math.max(0, ((lead.rpm || 1000) - 1000) / 75));
+        document.getElementById('hud-rpm-fill').style.width = `${rpmPct}%`;
+        document.getElementById('hud-nitro-val').textContent = `${lead.boost || 100}%`;
+        document.getElementById('hud-nitro-fill').style.width = `${lead.boost || 100}%`;
+      }
+
+      // Standings Widget
+      const sorted = [...players].sort((a,b) => b.distance - a.distance);
+      document.getElementById('racing-hud-standings').innerHTML = sorted.map((p, idx) => `
+        <div class="hud-standings-row" style="border-left: 3px solid ${p.color};">
+          <span>#${idx + 1} ${p.name}</span>
+          <span style="font-family: var(--font-hud);">${p.speed} KM/H</span>
+        </div>
+      `).join('');
+    });
+
+    socket.on('racing-time-tick', ({ timeLeft }) => {
+      document.getElementById('racing-timer-display').textContent = timeLeft;
+    });
+
+    /* ==========================================================================
+       APP NAVIGATION & SOCKET EVENTS
+       ========================================================================== */
+    let currentRoom = null;
+    let soloTestMode = false;
+
+    // View switching
+    const screens = {
+      lobby: document.getElementById('view-lobby'),
+      racing: document.getElementById('view-racing'),
+      puzzle: document.getElementById('view-puzzle'),
+      gameover: document.getElementById('view-gameover')
+    };
+
+    function switchView(viewName) {
+      Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
+      if (screens[viewName]) screens[viewName].classList.add('active');
+    }
+
+    // Audio Button
+    document.getElementById('audio-toggle-btn').addEventListener('click', () => {
+      audio.muted = !audio.muted;
+      document.getElementById('audio-icon').textContent = audio.muted ? '🔇' : '🔊';
+      if (audio.muted) audio.stopEngine();
+    });
+
+    // Solo Test Mode
+    const soloBtn = document.getElementById('solo-test-btn');
+    soloBtn.addEventListener('click', () => {
+      soloTestMode = !soloTestMode;
+      soloBtn.textContent = `Solo Test Mode: ${soloTestMode ? 'ON' : 'OFF'}`;
+      soloBtn.style.color = soloTestMode ? 'var(--accent-lime)' : 'rgba(255,255,255,0.6)';
+      checkStartBtn();
+    });
+
+    function checkStartBtn() {
+      const pCount = currentRoom ? (currentRoom.players ? currentRoom.players.length : 0) : 0;
+      document.getElementById('start-game-btn').disabled = !(pCount >= 2 || soloTestMode);
+    }
+
+    // Host Connects and Creates Room
+    function requestRoomCreation() {
+      const statusEl = document.getElementById('connection-status-text');
+      if (statusEl) statusEl.textContent = 'CONNECTED';
+
+      socket.emit('create-room', (res) => {
+        if (res && res.success) {
+          currentRoom = res.room;
+          const codeEl = document.getElementById('lobby-room-code');
+          if (codeEl) codeEl.textContent = res.roomCode;
+          const urlEl = document.getElementById('lobby-controller-url');
+          if (urlEl) urlEl.textContent = res.controllerUrl;
+          const qrCanvas = document.getElementById('qr-canvas');
+          if (qrCanvas) renderQRCode(qrCanvas, res.controllerUrl);
+          updateLobby(res.room);
+          console.log('[Room Created Successfully]', res.roomCode, res.controllerUrl);
+        } else {
+          console.error('[Room Creation Error]', res);
+        }
+      });
+    }
+
+    socket.on('connect', requestRoomCreation);
+    if (socket.connected) {
+      requestRoomCreation();
+    }
+
+    function updateLobby(room) {
+      currentRoom = room;
+      const players = room.players || [];
+      document.getElementById('player-count-badge').textContent = `${players.length} / 4`;
+
+      for (let s = 0; s < 4; s++) {
+        const card = document.getElementById(`slot-card-${s}`);
+        const p = players.find(pl => pl.slot === s);
+        if (p) {
+          card.classList.add('occupied');
+          card.querySelector('.slot-player-name').textContent = p.name;
+        } else {
+          card.classList.remove('occupied');
+          card.querySelector('.slot-player-name').textContent = 'Waiting...';
+        }
+      }
+      checkStartBtn();
+    }
+
+    socket.on('room-update', updateLobby);
+    socket.on('player-left', (d) => { if (d.room) updateLobby(d.room); });
+
+    // Mode Selection
+    document.getElementById('mode-racing-btn').addEventListener('click', () => {
+      socket.emit('select-game', { roomCode: currentRoom.code, gameType: 'racing' });
+    });
+    document.getElementById('mode-puzzle-btn').addEventListener('click', () => {
+      socket.emit('select-game', { roomCode: currentRoom.code, gameType: 'puzzle' });
+    });
+
+    socket.on('game-selected', ({ gameType }) => {
+      document.getElementById('mode-racing-btn').classList.toggle('selected', gameType === 'racing');
+      document.getElementById('mode-puzzle-btn').classList.toggle('selected', gameType === 'puzzle');
+    });
+
+    // Start Game
+    document.getElementById('start-game-btn').addEventListener('click', () => {
+      audio.init();
+      socket.emit('start-game', { roomCode: currentRoom.code, soloTest: soloTestMode });
+    });
+
+    document.getElementById('gameover-rematch-btn').addEventListener('click', () => {
+      socket.emit('start-game', { roomCode: currentRoom.code, soloTest: soloTestMode });
+    });
+    document.getElementById('gameover-lobby-btn').addEventListener('click', () => {
+      socket.emit('return-to-lobby', { roomCode: currentRoom.code });
+    });
+
+    socket.on('game-started', ({ gameType, room }) => {
+      currentRoom = room;
+      if (gameType === 'racing') {
+        switchView('racing');
+        initScene();
+        is3DRunning = true;
+        carMeshes.clear();
+        audio.startEngine();
+        gameLoop();
+      } else if (gameType === 'puzzle') {
+        is3DRunning = false;
+        switchView('puzzle');
+      }
+    });
+
+    socket.on('lobby-return', (room) => {
+      is3DRunning = false;
+      audio.stopEngine();
+      switchView('lobby');
+      updateLobby(room);
+    });
+
+    socket.on('game-over', ({ leaderboard }) => {
+      is3DRunning = false;
+      audio.stopEngine();
+      switchView('gameover');
+      audio.playVictory();
+      confetti.burst();
+
+      const p1 = leaderboard[0];
+      const p2 = leaderboard[1];
+      const p3 = leaderboard[2];
+
+      document.getElementById('podium-name-1').textContent = p1 ? p1.name : '--';
+      document.getElementById('podium-score-1').textContent = p1 ? `${p1.score} PTS` : '--';
+      document.getElementById('podium-name-2').textContent = p2 ? p2.name : '--';
+      document.getElementById('podium-score-2').textContent = p2 ? `${p2.score} PTS` : '--';
+      document.getElementById('podium-name-3').textContent = p3 ? p3.name : '--';
+      document.getElementById('podium-score-3').textContent = p3 ? `${p3.score} PTS` : '--';
+      document.getElementById('gameover-title').textContent = p1 ? `🏆 ${p1.name.toUpperCase()} TAKES THE CROWN!` : 'RACE FINISHED!';
+    });
+
+    // Puzzle Mode Handlers
+    socket.on('new-puzzle-round', ({ round, questionText, options }) => {
+      document.getElementById('puzzle-round-number').textContent = `ROUND ${round}`;
+      document.getElementById('puzzle-question-display').textContent = `${questionText} = ?`;
+      ['A', 'B', 'C', 'D'].forEach(l => {
+        document.getElementById(`puzzle-opt-${l}`).classList.remove('correct-highlight');
+        document.getElementById(`puzzle-val-${l}`).textContent = options[l] !== undefined ? options[l] : '--';
+      });
+    });
+
+    socket.on('puzzle-round-won', ({ correctAnswer }) => {
+      audio.playVictory();
+      const c = document.getElementById(`puzzle-opt-${correctAnswer}`);
+      if (c) c.classList.add('correct-highlight');
+    });
+  </script>
+</body>
+</html>

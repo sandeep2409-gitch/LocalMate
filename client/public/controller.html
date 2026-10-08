@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CrossPlay Supercar Cockpit Controller</title>
+  <!-- Google Fonts for futuristic arcade & telemetry typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Outfit:wght@400;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       SUPERCAR COCKPIT DESIGN SYSTEM
+       ========================================================================== */
+    :root {
+      --bg-dark: #070712;
+      --bg-card: rgba(18, 20, 38, 0.85);
+      --bg-card-border: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #00f0ff;
+      --accent-magenta: #ff0077;
+      --accent-lime: #00ff66;
+      --accent-gold: #ffb700;
+      --accent-purple: #8b5cf6;
+
+      --player-color: #00f0ff;
+      --player-rgb: 0, 240, 255;
+
+      --font-body: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Orbitron', monospace, sans-serif;
+      --font-hud: 'Rajdhani', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      background-color: var(--bg-dark);
+      color: #ffffff;
+      font-family: var(--font-body);
+      touch-action: manipulation;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at 50% 20%, rgba(var(--player-rgb), 0.15), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .controller-app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+
+    /* Top Status Bar */
+    .controller-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(10, 12, 24, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--bg-card-border);
+      min-height: 48px;
+    }
+
+    .player-identity-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .player-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--player-color);
+      box-shadow: 0 0 10px var(--player-color);
+    }
+
+    .player-name-label {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .room-badge {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .screen-view {
+      flex: 1;
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+    }
+
+    .screen-view.active {
+      display: flex;
+    }
+
+    /* ==========================================================================
+       VIEW 1: JOIN FORM SCREEN
+       ========================================================================== */
+    #screen-join {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .join-hero-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .join-logo-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      box-shadow: 0 10px 30px rgba(0, 240, 255, 0.35);
+    }
+
+    .join-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+
+    .join-form-card {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 600;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 8px;
+    }
+
+    .text-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.08);
+    }
+
+    .text-input.code-input {
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .random-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 0 16px;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .join-submit-btn {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .join-error-msg {
+      color: #ff3366;
+      font-size: 12px;
+      text-align: center;
+      min-height: 16px;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       VIEW 2: LOBBY WAITING SCREEN
+       ========================================================================== */
+    #screen-lobby {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .lobby-avatar-card {
+      width: 100px;
+      height: 100px;
+      border-radius: 28px;
+      background: radial-gradient(circle, var(--player-color), rgba(0, 0, 0, 0.6));
+      border: 3px solid var(--player-color);
+      box-shadow: 0 0 35px var(--player-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+
+    /* ==========================================================================
+       VIEW 3: SUPERCAR COCKPIT CONTROLLER SCREEN (Pedals, Wheel, Nitro, Gyro)
+       ========================================================================== */
+    #screen-racing {
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    /* Top Supercar Dashboard Telemetry */
+    .cockpit-dashboard {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 16px;
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .telemetry-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .telemetry-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .telemetry-val {
+      font-family: var(--font-hud);
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .gear-val {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent-cyan);
+    }
+
+    .gyro-toggle-pill {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+    }
+
+    .gyro-toggle-pill.active {
+      background: rgba(0, 255, 102, 0.2);
+      border-color: var(--accent-lime);
+      color: var(--accent-lime);
+    }
+
+    /* Main Cockpit Driving Zone */
+    .cockpit-driving-zone {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    /* Left Thumb Zone (Steer Paddles / Handbrake) */
+    .steer-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      height: 100%;
+      justify-content: center;
+    }
+
+    .steer-paddles-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 190px;
+    }
+
+    .steer-paddle-btn {
+      flex: 1;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 28px;
+      color: #fff;
+      touch-action: manipulation;
+      transition: all 0.1s;
+    }
+
+    .steer-paddle-btn.active, .steer-paddle-btn:active {
+      background: rgba(var(--player-rgb), 0.35);
+      border-color: var(--player-color);
+      transform: scale(0.94);
+      box-shadow: 0 0 25px var(--player-color);
+    }
+
+    .handbrake-btn {
+      width: 100%;
+      max-width: 190px;
+      height: 48px;
+      background: rgba(255, 0, 85, 0.15);
+      border: 2px solid rgba(255, 0, 85, 0.4);
+      border-radius: 12px;
+      color: #ff0055;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      touch-action: manipulation;
+    }
+
+    .handbrake-btn.active, .handbrake-btn:active {
+      background: #ff0055;
+      color: #fff;
+      box-shadow: 0 0 25px #ff0055;
+      transform: scale(0.95);
+    }
+
+    /* Center Nitrous Oxide (NOS) Trigger */
+    .nitro-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .nitro-trigger-btn {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #00f0ff, #005588);
+      border: 3px solid #00f0ff;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: #fff;
+      touch-action: manipulation;
+      transition: transform 0.1s;
+    }
+
+    .nitro-trigger-btn.active, .nitro-trigger-btn:active {
+      transform: scale(0.92);
+      background: radial-gradient(circle at 35% 35%, #ff0077, #990033);
+      border-color: #ff0077;
+      box-shadow: 0 0 45px #ff0077;
+    }
+
+    .nitro-bottle-icon {
+      font-size: 24px;
+    }
+
+    .nitro-text {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    /* Right Thumb Zone (Metallic Gas & Brake Pedals) */
+    .pedals-zone {
+      flex: 1;
+      display: flex;
+      gap: 12px;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Metallic Brake Pedal */
+    .pedal-brake {
+      flex: 1;
+      height: 150px;
+      background: linear-gradient(180deg, #2a2e3d, #14161f);
+      border: 3px solid #ff3366;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      touch-action: manipulation;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      transition: transform 0.1s;
+    }
+
+    .pedal-brake.active, .pedal-brake:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 25px #ff3366;
+      border-color: #ff0055;
+      background: linear-gradient(180deg, #ff0055, #660022);
+    }
+
+    /* Metallic Accelerator (Gas) Pedal */
+    .pedal-gas {
+      flex: 1.2;
+      height: 180px;
+      background: linear-gradient(180deg, #2a344a, #131722);
+      border: 3px solid var(--accent-cyan);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      touch-action: manipulation;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      transition: transform 0.1s;
+    }
+
+    .pedal-gas.active, .pedal-gas:active {
+      transform: translateY(8px);
+      box-shadow: 0 0 30px var(--accent-cyan);
+      border-color: #00ff66;
+      background: linear-gradient(180deg, #00ff66, #005522);
+    }
+
+    .pedal-ribs {
+      width: 60%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+
+    .pedal-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-top: 4px;
+    }
+
+    /* ==========================================================================
+       VIEW 4: PUZZLE CONTROLLER
+       ========================================================================== */
+    #screen-puzzle {
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .puzzle-btn-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .puzzle-answer-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .puzzle-answer-btn.selected {
+      transform: scale(0.95);
+      box-shadow: 0 0 30px currentColor;
+    }
+
+    .puzzle-answer-btn.btn-A { color: var(--accent-gold); border-color: rgba(255, 183, 0, 0.4); }
+    .puzzle-answer-btn.btn-B { color: var(--accent-cyan); border-color: rgba(0, 240, 255, 0.4); }
+    .puzzle-answer-btn.btn-C { color: var(--accent-magenta); border-color: rgba(255, 0, 119, 0.4); }
+    .puzzle-answer-btn.btn-D { color: var(--accent-lime); border-color: rgba(0, 255, 102, 0.4); }
+
+    .p-btn-letter {
+      font-family: var(--font-display);
+      font-size: 52px;
+      font-weight: 900;
+    }
+
+    /* ==========================================================================
+       VIEW 5: GAME OVER
+       ========================================================================== */
+    #screen-gameover {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="controller-app">
+    <!-- Status Bar -->
+    <header class="controller-status-bar">
+      <div class="player-identity-chip">
+        <span id="header-color-dot" class="player-color-dot"></span>
+        <span id="header-player-name" class="player-name-label">CONTROLLER READY</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="header-room-code" class="room-badge">ROOM: ----</span>
+      </div>
+    </header>
+
+    <!-- 1. Join Screen -->
+    <main id="screen-join" class="screen-view active">
+      <div class="join-hero-logo">
+        <div class="join-logo-icon">🏎️</div>
+        <h1 class="join-title">CROSSPLAY</h1>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.5);">Supercar Cockpit Mobile Controller</p>
+      </div>
+
+      <div class="join-form-card">
+        <div class="form-group">
+          <label class="form-label">ROOM CODE (6 DIGITS)</label>
+          <input type="text" id="input-room-code" class="text-input code-input" placeholder="ABCDEF" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">DRIVER NAME</label>
+          <div class="input-wrap">
+            <input type="text" id="input-player-name" class="text-input" placeholder="Enter driver name..." maxlength="14" autocomplete="off">
+            <button type="button" id="btn-random-name" class="random-btn">🎲</button>
+          </div>
+        </div>
+
+        <button type="button" id="btn-join-room" class="join-submit-btn">
+          <span>CONNECT COCKPIT</span>
+          <span>⚡</span>
+        </button>
+
+        <div id="join-error-msg" class="join-error-msg"></div>
+      </div>
+    </main>
+
+    <!-- 2. Lobby Screen -->
+    <main id="screen-lobby" class="screen-view">
+      <div class="lobby-avatar-card">🏎️</div>
+      <div>
+        <h2 id="lobby-player-title" style="font-family: var(--font-display); font-size: 22px; font-weight: 900;">DRIVER READY</h2>
+        <p style="font-size: 13px; color: rgba(255, 255, 255, 0.6); max-width: 260px; margin-top: 6px;">
+          Look at the main TV screen. Waiting for the race to start!
+        </p>
+      </div>
+    </main>
+
+    <!-- 3. Supercar Racing Cockpit Screen -->
+    <main id="screen-racing" class="screen-view">
+      <!-- Live Dashboard Telemetry -->
+      <div class="cockpit-dashboard">
+        <div class="telemetry-item">
+          <span class="telemetry-label">SPEED</span>
+          <span id="race-speed-val" class="telemetry-val">0</span>
+        </div>
+
+        <div class="telemetry-item">
+          <span class="telemetry-label">GEAR</span>
+          <span id="race-gear-val" class="gear-val">1</span>
+        </div>
+
+        <div class="telemetry-item">
+          <span class="telemetry-label">RPM</span>
+          <span id="race-rpm-val" class="telemetry-val" style="font-size: 20px;">1800</span>
+        </div>
+
+        <button id="btn-gyro-toggle" class="gyro-toggle-pill">
+          <span>GYRO STEER: OFF</span>
+        </button>
+      </div>
+
+      <!-- Main Driving Cockpit Zone -->
+      <div class="cockpit-driving-zone">
+        <!-- Left Thumb: Steering Paddles & Handbrake -->
+        <div class="steer-zone">
+          <div class="steer-paddles-row">
+            <button id="ctrl-left" class="steer-paddle-btn" aria-label="Steer Left">
+              <span>◀</span>
+              <span style="font-size: 10px; font-weight: 700; opacity: 0.6;">LEFT</span>
+            </button>
+            <button id="ctrl-right" class="steer-paddle-btn" aria-label="Steer Right">
+              <span>▶</span>
+              <span style="font-size: 10px; font-weight: 700; opacity: 0.6;">RIGHT</span>
+            </button>
+          </div>
+
+          <button id="ctrl-drift" class="handbrake-btn">
+            <span>DRIFT / E-BRAKE</span>
+          </button>
+        </div>
+
+        <!-- Center: Nitrous Oxide (NOS) Trigger -->
+        <div class="nitro-zone">
+          <button id="ctrl-boost" class="nitro-trigger-btn">
+            <span class="nitro-bottle-icon">🚀</span>
+            <span class="nitro-text">NITRO</span>
+          </button>
+          <div style="width: 70px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+            <div id="boost-meter-fill" style="width: 100%; height: 100%; background: var(--accent-cyan); transition: width 0.1s linear;"></div>
+          </div>
+        </div>
+
+        <!-- Right Thumb: Metallic Brake & Gas Pedals -->
+        <div class="pedals-zone">
+          <!-- Brake Pedal -->
+          <button id="ctrl-brake" class="pedal-brake">
+            <div class="pedal-ribs"></div>
+            <div class="pedal-ribs"></div>
+            <div class="pedal-ribs"></div>
+            <span class="pedal-title" style="color: #ff3366;">BRAKE</span>
+          </button>
+
+          <!-- Gas / Throttle Pedal -->
+          <button id="ctrl-gas" class="pedal-gas">
+            <div class="pedal-ribs"></div>
+            <div class="pedal-ribs"></div>
+            <div class="pedal-ribs"></div>
+            <div class="pedal-ribs"></div>
+            <span class="pedal-title" style="color: var(--accent-cyan);">GAS</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 4. Puzzle Screen -->
+    <main id="screen-puzzle" class="screen-view">
+      <div style="background: var(--bg-card); border-radius: 14px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; opacity: 0.6;">YOUR SCORE:</span>
+        <span id="puzzle-score-display" style="font-family: var(--font-display); font-size: 20px; font-weight: 900; color: var(--accent-lime);">0 PTS</span>
+      </div>
+
+      <div id="puzzle-feedback-banner" style="text-align: center; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); min-height: 24px;">
+        TAP YOUR ANSWER!
+      </div>
+
+      <div class="puzzle-btn-grid">
+        <button id="p-btn-A" class="puzzle-answer-btn btn-A">
+          <span class="p-btn-letter">A</span>
+        </button>
+        <button id="p-btn-B" class="puzzle-answer-btn btn-B">
+          <span class="p-btn-letter">B</span>
+        </button>
+        <button id="p-btn-C" class="puzzle-answer-btn btn-C">
+          <span class="p-btn-letter">C</span>
+        </button>
+        <button id="p-btn-D" class="puzzle-answer-btn btn-D">
+          <span class="p-btn-letter">D</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- 5. Game Over Screen -->
+    <main id="screen-gameover" class="screen-view">
+      <div style="font-size: 60px;">🏆</div>
+      <h2 id="gameover-result-title" style="font-family: var(--font-display); font-size: 24px; font-weight: 900;">RACE FINISHED!</h2>
+      <div id="gameover-score-pill" style="background: rgba(255,255,255,0.08); padding: 8px 20px; border-radius: 12px; font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--accent-gold);">
+        SCORE: 0 PTS
+      </div>
+    </main>
+  </div>
+
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    /* ==========================================================================
+       HAPTICS & VIBRATION FEEDBACK
+       ========================================================================== */
+    function vibrateHaptic(pattern = 25) {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(pattern); } catch (e) {}
+      }
+    }
+
+    const socket = io();
+    let currentRoomCode = '';
+    let myPlayer = null;
+    let selectedAnswer = null;
+    let gyroEnabled = false;
+
+    const screens = {
+      join: document.getElementById('screen-join'),
+      lobby: document.getElementById('screen-lobby'),
+      racing: document.getElementById('screen-racing'),
+      puzzle: document.getElementById('screen-puzzle'),
+      gameover: document.getElementById('screen-gameover')
+    };
+
+    function switchScreen(screenName) {
+      Object.keys(screens).forEach(key => screens[key].classList.remove('active'));
+      if (screens[screenName]) screens[screenName].classList.add('active');
+    }
+
+    // Auto-fill room code from URL ?room=ABCDEF
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    if (roomParam) {
+      document.getElementById('input-room-code').value = roomParam.trim().toUpperCase();
+    }
+
+    // Random Name generator
+    const COOL_NAMES = [
+      'TurboApex', 'CyberStig', 'DriftKing', 'ViperGT',
+      'HyperSonic', 'OctaneGhost', 'AeroTitan', 'ZenithRacer'
+    ];
+    document.getElementById('btn-random-name').addEventListener('click', () => {
+      vibrateHaptic(20);
+      document.getElementById('input-player-name').value = COOL_NAMES[Math.floor(Math.random() * COOL_NAMES.length)];
+    });
+
+    // Auto-capitalize room code input
+    const inputRoomCode = document.getElementById('input-room-code');
+    inputRoomCode.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    // Join room handler
+    document.getElementById('btn-join-room').addEventListener('click', handleJoin);
+    inputRoomCode.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleJoin(); });
+    document.getElementById('input-player-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') handleJoin(); });
+
+    function handleJoin() {
+      vibrateHaptic(30);
+      const roomCode = inputRoomCode.value.trim().toUpperCase();
+      let name = document.getElementById('input-player-name').value.trim();
+
+      if (!roomCode || roomCode.length < 4) {
+        document.getElementById('join-error-msg').textContent = 'Please enter a valid room code';
+        return;
+      }
+      if (!name) {
+        name = COOL_NAMES[Math.floor(Math.random() * COOL_NAMES.length)];
+      }
+
+      socket.emit('join-room', { roomCode, name }, (res) => {
+        if (res.success) {
+          myPlayer = res.player;
+          currentRoomCode = roomCode;
+
+          document.documentElement.style.setProperty('--player-color', myPlayer.color);
+          document.getElementById('header-color-dot').style.background = myPlayer.color;
+          document.getElementById('header-player-name').textContent = myPlayer.name;
+          document.getElementById('header-room-code').textContent = `ROOM: ${currentRoomCode}`;
+          document.getElementById('lobby-player-title').textContent = `${myPlayer.name.toUpperCase()} (P${myPlayer.slot + 1})`;
+
+          switchScreen('lobby');
+        } else {
+          document.getElementById('join-error-msg').textContent = res.error || 'Failed to join';
+        }
+      });
+    }
+
+    /* ==========================================================================
+       SUPERCAR COCKPIT INPUT BINDINGS (Hold to Drive / Steer)
+       ========================================================================== */
+    function bindHoldAction(el, onDown, onUp, hapticMs = 25) {
+      let activePointerId = null;
+
+      const handleStart = (e) => {
+        e.preventDefault();
+        if (activePointerId !== null) return;
+        activePointerId = e.pointerId;
+        try { el.setPointerCapture(e.pointerId); } catch (err) {}
+        el.classList.add('active');
+        vibrateHaptic(hapticMs);
+        onDown();
+      };
+
+      const handleEnd = (e) => {
+        e.preventDefault();
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+        activePointerId = null;
+        try { el.releasePointerCapture(e.pointerId); } catch (err) {}
+        el.classList.remove('active');
+        onUp();
+      };
+
+      el.addEventListener('pointerdown', handleStart);
+      el.addEventListener('pointerup', handleEnd);
+      el.addEventListener('pointercancel', handleEnd);
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    // 1. Gas Pedal (Throttle) - Immediate snappy response
+    const btnGas = document.getElementById('ctrl-gas');
+    bindHoldAction(btnGas, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'throttle',
+        data: { value: 1.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'up',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'throttle',
+        data: { value: 0.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'up',
+        data: { active: false }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'release',
+        data: { control: 'throttle' }
+      });
+    }, 20);
+
+    // 2. Brake Pedal - Firm stopping & reverse
+    const btnBrake = document.getElementById('ctrl-brake');
+    bindHoldAction(btnBrake, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'brake',
+        data: { value: 1.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'down',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'brake',
+        data: { value: 0.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'down',
+        data: { active: false }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'release',
+        data: { control: 'brake' }
+      });
+    }, 35);
+
+    // 3. Handbrake / Drift Button
+    const btnDrift = document.getElementById('ctrl-drift');
+    bindHoldAction(btnDrift, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'drift',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'drift',
+        data: { active: false }
+      });
+    }, 45);
+
+    // 4. Nitro Boost Trigger
+    const btnBoost = document.getElementById('ctrl-boost');
+    bindHoldAction(btnBoost, () => {
+      vibrateHaptic([40, 20, 60]);
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'boost',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'boost',
+        data: { active: false }
+      });
+    }, 60);
+
+    // 5. Steering Left & Right Paddles
+    const btnLeft = document.getElementById('ctrl-left');
+    const btnRight = document.getElementById('ctrl-right');
+
+    bindHoldAction(btnLeft, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'steer',
+        data: { value: -1.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'left',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'steer',
+        data: { value: 0.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'left',
+        data: { active: false }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'release',
+        data: { control: 'steer' }
+      });
+    }, 15);
+
+    bindHoldAction(btnRight, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'steer',
+        data: { value: 1.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'right',
+        data: { active: true }
+      });
+    }, () => {
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'steer',
+        data: { value: 0.0 }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'right',
+        data: { active: false }
+      });
+      socket.emit('controller-input', {
+        roomCode: currentRoomCode,
+        action: 'release',
+        data: { control: 'steer' }
+      });
+    }, 15);
+
+    // 6. Gyro / Tilt-to-Steer (DeviceOrientationEvent)
+    const btnGyroToggle = document.getElementById('btn-gyro-toggle');
+    btnGyroToggle.addEventListener('click', () => {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') toggleGyro();
+          })
+          .catch(console.error);
+      } else {
+        toggleGyro();
+      }
+    });
+
+    function toggleGyro() {
+      gyroEnabled = !gyroEnabled;
+      btnGyroToggle.classList.toggle('active', gyroEnabled);
+      btnGyroToggle.textContent = `GYRO STEER: ${gyroEnabled ? 'ON' : 'OFF'}`;
+      vibrateHaptic(30);
+    }
+
+    window.addEventListener('deviceorientation', (e) => {
+      if (!gyroEnabled || !screens.racing.classList.contains('active')) return;
+      // gamma is left/right roll angle in degrees (-90 to +90)
+      const roll = e.gamma || 0;
+      const steerVal = Math.max(-1, Math.min(1, roll / 30)); // 30 degrees = full lock
+      if (Math.abs(steerVal) > 0.05) {
+        socket.emit('controller-input', {
+          roomCode: currentRoomCode,
+          action: 'steer',
+          data: { value: steerVal }
+        });
+      }
+    });
+
+    /* ==========================================================================
+       PUZZLE CONTROLLER BINDINGS
+       ========================================================================== */
+    ['A', 'B', 'C', 'D'].forEach(l => {
+      const b = document.getElementById(`p-btn-${l}`);
+      b.addEventListener('click', () => {
+        if (!screens.puzzle.classList.contains('active')) return;
+        if (selectedAnswer) return;
+        vibrateHaptic(30);
+        selectedAnswer = l;
+        b.classList.add('selected');
+        document.getElementById('puzzle-feedback-banner').textContent = `LOCKED IN: OPTION ${l}`;
+        socket.emit('controller-input', {
+          roomCode: currentRoomCode,
+          action: 'answer',
+          data: { choice: l }
+        });
+      });
+    });
+
+    /* ==========================================================================
+       SOCKET REAL-TIME UPDATES
+       ========================================================================== */
+    socket.on('game-started', ({ gameType }) => {
+      vibrateHaptic([60, 40, 100]);
+      if (gameType === 'racing') {
+        switchScreen('racing');
+      } else if (gameType === 'puzzle') {
+        switchScreen('puzzle');
+        selectedAnswer = null;
+      }
+    });
+
+    socket.on('racing-state-tick', ({ players }) => {
+      if (!myPlayer) return;
+      const me = players.find(p => p.id === myPlayer.id);
+      if (me) {
+        document.getElementById('race-speed-val').textContent = me.speed;
+        document.getElementById('race-gear-val').textContent = me.gear || 1;
+        document.getElementById('race-rpm-val').textContent = me.rpm || 1800;
+        document.getElementById('boost-meter-fill').style.width = `${me.boost}%`;
+
+        // Kerb or drift vibration
+        if (me.offRoad) vibrateHaptic(15);
+      }
+    });
+
+    socket.on('new-puzzle-round', () => {
+      selectedAnswer = null;
+      document.getElementById('puzzle-feedback-banner').textContent = 'CHOOSE YOUR ANSWER!';
+      ['A', 'B', 'C', 'D'].forEach(l => document.getElementById(`p-btn-${l}`).classList.remove('selected'));
+    });
+
+    socket.on('puzzle-round-won', ({ winnerId, scores }) => {
+      if (myPlayer) {
+        if (winnerId === myPlayer.id) vibrateHaptic([80, 40, 120]);
+        const myScore = scores.find(s => s.id === myPlayer.id);
+        if (myScore) document.getElementById('puzzle-score-display').textContent = `${myScore.score} PTS`;
+      }
+    });
+
+    socket.on('game-over', ({ leaderboard }) => {
+      switchScreen('gameover');
+      vibrateHaptic([100, 50, 150]);
+      if (myPlayer) {
+        const entry = leaderboard.find(l => l.id === myPlayer.id);
+        if (entry) {
+          document.getElementById('gameover-result-title').textContent = entry.rank === 1 ? '👑 1ST PLACE WINNER!' : `${entry.rank}TH PLACE`;
+          document.getElementById('gameover-score-pill').textContent = `FINAL SCORE: ${entry.score} PTS`;
+        }
+      }
+    });
+
+    socket.on('lobby-return', () => switchScreen('lobby'));
+    socket.on('host-disconnected', () => {
+      alert('Host display has disconnected.');
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
