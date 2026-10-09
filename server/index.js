@@ -65,6 +65,7 @@ const PLAYER_SLOTS = [
   { slot: 2, color: '#00ff66', colorName: 'Lime', name: 'Toxic Lime', carSkin: 'toxic-lime' },
   { slot: 3, color: '#ffb700', colorName: 'Amber', name: 'Solar Gold', carSkin: 'solar-gold' }
 ];
+const PLAYER_COLORS = PLAYER_SLOTS.map(s => s.color);
 
 // Active rooms map: roomCode -> room object
 const rooms = new Map();
@@ -443,7 +444,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
-    const player = room.players.find(p => p.id === socket.id) || (room.hostId === socket.id ? room.players[0] : null);
+    const player = room.players.find(p => p.id === socket.id) || (room.hostSocketId === socket.id ? room.players[0] : null);
     if (!player) return;
 
     if (room.state === 'RACING') {

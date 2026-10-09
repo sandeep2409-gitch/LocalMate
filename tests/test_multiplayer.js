@@ -1,9 +1,30 @@
+const path = require('path');
+const http = require('http');
+const { fork } = require('child_process');
 const { io } = require('socket.io-client');
 
 const SERVER_URL = 'http://localhost:3000';
+let serverProcess = null;
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function ensureServerRunning() {
+  const isRunning = await new Promise(resolve => {
+    const req = http.get(`${SERVER_URL}/api/info`, res => {
+      resolve(res.statusCode === 200);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(600, () => { req.destroy(); resolve(false); });
+  });
+
+  if (!isRunning) {
+    console.log('📡 Server not running on :3000. Spawning background server for test run...');
+    const serverPath = path.join(__dirname, '../server/index.js');
+    serverProcess = fork(serverPath, [], { stdio: 'ignore' });
+    await wait(1200);
+  }
 }
 
 function createConnectedSocket() {
@@ -16,6 +37,7 @@ function createConnectedSocket() {
 }
 
 async function runTests() {
+  await ensureServerRunning();
   console.log('🏁 Starting CrossPlay Arena Multiplayer Automated Test Suite...\n');
 
   // 1. Create Host Client
@@ -200,19 +222,46 @@ async function runTests() {
   if (!p1Receipt) throw new Error('P1 did not receive puzzle answer receipt!');
   console.log(`✅ Mobile answer feedback received: Choice: ${p1Receipt.choice}, Is Correct: ${p1Receipt.isCorrect}, Correct Answer: ${p1Receipt.correctAnswer}\n`);
 
-  // 8. Clean Disconnect & Teardown
-  console.log('--- TEST 8: Teardown & Room Cleanup ---');
+  // 8. Test Solo Test Mode (0 Remote Players)
+  console.log('--- TEST 8: Solo Test Mode (0 Remote Players Fallback) ---');
   p1Socket.disconnect();
   p2Socket.disconnect();
+  await wait(300);
+
+  const soloRoomData = await new Promise((resolve) => {
+    hostSocket.emit('create-room', resolve);
+  });
+  const soloRoomCode = soloRoomData.roomCode;
+  hostSocket.emit('select-game', { roomCode: soloRoomCode, gameType: 'racing' });
+  await wait(200);
+
+  const soloStartRes = await new Promise((resolve) => {
+    hostSocket.emit('start-game', { roomCode: soloRoomCode, soloTest: true }, resolve);
+  });
+  if (!soloStartRes.success) {
+    throw new Error(`Solo test failed to start: ${JSON.stringify(soloStartRes)}`);
+  }
+  console.log('✅ Solo Test Mode started cleanly without crash (PLAYER_COLORS fallback verified).\n');
+
+  // 9. Clean Disconnect & Teardown
+  console.log('--- TEST 9: Teardown & Room Cleanup ---');
   hostSocket.disconnect();
   await wait(300);
   console.log('✅ All test sockets cleanly disconnected and room cleaned up.\n');
+
+  if (serverProcess) {
+    serverProcess.kill();
+    console.log('🛑 Local test server stopped.\n');
+  }
 
   console.log('🎉 ALL INTEGRATION TESTS PASSED 100% SUCCESSFULLY!');
   process.exit(0);
 }
 
 runTests().catch(err => {
+  if (serverProcess) {
+    serverProcess.kill();
+  }
   console.error('❌ TEST FAILED:', err);
   process.exit(1);
 });

@@ -8,17 +8,15 @@ Engineered with **Node.js**, **Express**, **Socket.IO**, and **Pure Vanilla HTML
 
 ## 🌟 Real Racing Features & Innovations
 
-### 1. 🏁 3D Pseudo-Road Perspective Engine
-- **Horizon Chase / OutRun Style 3D Projection:** Renders a deep 2.4 km Grand Prix circuit with 3D elevation hills, technical chicanes, blind crests, and hairpin turns.
-- **Dynamic Track Features:** Red & white striped rumble kerbs, roadside neon billboards (`NITRO`, `APEX`, `DRIFT`, `OCTANE`), speed pads, and starting/finish gantries.
-- **Parallax Cyberpunk Horizon:** Distant neon city skyscrapers and mountain silhouettes that rotate with road curvature and camera heading.
+### 1. 🏁 Three.js 3D WebGL Circuit Engine
+- **Full 3D WebGL Rendering:** Renders a 3D Grand Prix circuit with cyberpunk fog, asphalt track, striped rumble kerbs, and roadside neon cyberpunk towers and foliage.
+- **Procedural Supercars:** Custom aerodynamic supercar meshes with metallic shaders, independently spinning wheels that steer with input, real-time headlights with spotlights illuminating the road, and rear LED taillights.
+- **Dynamic Speed Lines:** Canvas motion blur particles reacting dynamically to car speed and nitrous boosts.
 
-### 2. 📺 Split-Screen & Cinematic Viewport System
-- **Real Multiplayer Split-Screen:** 
-  - **2 Players:** Splits screen horizontally (Top = Player 1, Bottom = Player 2).
-  - **3 or 4 Players:** 4-way quadrant split screen!
-  - Each player gets their own dedicated 3D chase camera, viewing the road, upcoming turns, and rivals ahead or in their mirrors.
-- **Broadcast Cam Mode:** Single full-screen camera tracking the race leader and lead battle with a simple click on the **VIEW MODE** button!
+### 2. 📺 Dynamic Broadcast Chase Camera & NFS HUD
+- **Spring-Damped Chase Camera:** Smooth 3D third-person chase camera following the lead driver.
+- **Nitrous FOV Expansion:** Camera dynamically widens FOV (from 60° to 76°) and shakes under nitro boost for high-speed intensity.
+- **Pro Cockpit HUD:** Real-time digital speedometer (KM/H), gear indicator (G1–G6), RPM gauge bar, and nitrous oxide capacity meter.
 
 ### 3. ⚙️ Authentic Supercar Vehicle Dynamics
 - **6-Speed Transmission & RPM Tachometer:** 
@@ -78,7 +76,13 @@ Or for development with auto-reload:
 npm run dev
 ```
 
-### 2. Open the Main Screen
+### 2. Run Automated Integration Tests (Optional)
+Run the full 9-step automated multiplayer E2E test suite (auto-spawns test server if needed):
+```bash
+npm test
+```
+
+### 3. Open the Main Screen
 Navigate to **`http://localhost:3000`** on your TV, laptop, or desktop monitor.
 - A 6-character room code and automatic QR code will be generated.
 
